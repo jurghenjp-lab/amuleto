@@ -85,6 +85,7 @@ describe('RepositorioApuestasSQLite - Property-Based Tests', () => {
     it('preserva todos los campos de la apuesta', async () => {
       await fc.assert(
         fc.asyncProperty(generadorApuesta, async (apuestaData) => {
+          (global as any).__storage = {};
           const apuesta: Apuesta = apuestaData;
 
           await repositorio.guardar(apuesta);
@@ -106,6 +107,7 @@ describe('RepositorioApuestasSQLite - Property-Based Tests', () => {
         fc.asyncProperty(
           fc.array(generadorApuesta, { minLength: 1, maxLength: 10 }),
           async (apuestasData) => {
+            (global as any).__storage = {};
             // Guardar todas las apuestas
             for (const apuestaData of apuestasData) {
               const apuesta: Apuesta = apuestaData;

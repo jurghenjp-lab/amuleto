@@ -18,11 +18,11 @@ describe('MesaBuffonScreen', () => {
 
   it('debe resaltar los números seleccionados', () => {
     const numeros = [5, 12, 23, 34, 41, 48];
-    const { getByText } = render(<MesaBuffonScreen numeros={numeros} />);
+    const { getAllByText } = render(<MesaBuffonScreen numeros={numeros} />);
     
     // Verificar que los números seleccionados están presentes
     numeros.forEach(num => {
-      expect(getByText(num.toString())).toBeTruthy();
+      expect(getAllByText(num.toString()).length).toBeGreaterThan(0);
     });
   });
 

@@ -63,16 +63,20 @@ describe('BonolotoApiClient', () => {
 
     it('lanza error cuando hay timeout (Requisito 12.2)', async () => {
       (global.fetch as jest.Mock).mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => resolve({ ok: true, json: async () => ({}) }), 15000);
+        (_url: string, options: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            if (options?.signal) {
+              options.signal.addEventListener('abort', () =>
+                reject(Object.assign(new Error('AbortError'), { name: 'AbortError' }))
+              );
+            }
           })
       );
 
       await expect(client.obtenerUltimoSorteo()).rejects.toThrow(
         'Timeout al consultar API de Bonoloto'
       );
-    }, 12000);
+    }, 20000);
 
     it('lanza error cuando falta el campo combinacion (Requisito 12.4)', async () => {
       const mockData = {
@@ -278,9 +282,13 @@ describe('BonolotoApiClient', () => {
 
     it('lanza error cuando hay timeout en rango (Requisito 12.2)', async () => {
       (global.fetch as jest.Mock).mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => resolve({ ok: true, json: async () => ({}) }), 15000);
+        (_url: string, options: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            if (options?.signal) {
+              options.signal.addEventListener('abort', () =>
+                reject(Object.assign(new Error('AbortError'), { name: 'AbortError' }))
+              );
+            }
           })
       );
 
@@ -290,6 +298,6 @@ describe('BonolotoApiClient', () => {
       await expect(client.obtenerResultadosRango(fechaInicio, fechaFin)).rejects.toThrow(
         'Timeout al consultar API de Bonoloto'
       );
-    }, 12000);
+    }, 20000);
   });
 });

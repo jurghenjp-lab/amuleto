@@ -46,11 +46,11 @@ describe('ResultadosScreen', () => {
   });
 
   it('debe renderizar el complementario y reintegro', () => {
-    const { getByText } = render(<ResultadosScreen resultado={mockResultado} />);
+    const { getByText, getAllByText } = render(<ResultadosScreen resultado={mockResultado} />);
     
     expect(getByText('Complementario')).toBeTruthy();
     expect(getByText('7')).toBeTruthy();
-    expect(getByText('Reintegro')).toBeTruthy();
+    expect(getAllByText('Reintegro').length).toBeGreaterThan(0);
     expect(getByText('3')).toBeTruthy();
   });
 

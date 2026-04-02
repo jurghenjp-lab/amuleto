@@ -34,11 +34,18 @@ export class MotorHistorico implements IGeneradorApuestas {
     // 2. Calcular frecuencias
     const frecuencias = this.calcularFrecuencias(resultados);
 
-    // 3. Identificar números calientes (top 15)
-    const numerosCalientes = this.obtenerNumerosCalientes(frecuencias, 15);
+    // 3. Identificar números calientes (top 15) y todos los no-fríos
+    const todosCalientes = this.obtenerNumerosCalientes(frecuencias, 15);
 
     // 4. Identificar números fríos (>20 sorteos sin aparecer)
     const numerosFrios = this.obtenerNumerosFrios(resultados, 20);
+    const conjuntoFrios = new Set(numerosFrios);
+
+    // Filtrar calientes para excluir fríos
+    const numerosCalientes = todosCalientes.filter(n => !conjuntoFrios.has(n));
+
+    // Pool de números no-fríos para completar (todos los no-fríos ordenados por frecuencia)
+    const noFrios = this.obtenerNumerosCalientes(frecuencias, 49).filter(n => !conjuntoFrios.has(n));
 
     // 5. Seleccionar 4-5 números calientes (Requisito 1.2)
     const cantidadCalientes = Math.random() < 0.5 ? 4 : 5;
@@ -47,11 +54,11 @@ export class MotorHistorico implements IGeneradorApuestas {
     // 6. Seleccionar 1 número frío (Requisito 1.3)
     const seleccionFrios = this.seleccionarAleatorios(numerosFrios, 1);
 
-    // 7. Completar hasta 6 con números restantes
-    const apuesta = this.completarApuesta(seleccionCalientes, seleccionFrios);
+    // 7. Completar hasta 6 con números no-fríos
+    const apuesta = this.completarApuesta(seleccionCalientes, seleccionFrios, conjuntoFrios, noFrios);
 
     // 8. Ajustar distribución par/impar (Requisito 1.4)
-    const apuestaAjustada = this.ajustarDistribucionParImpar(apuesta);
+    const apuestaAjustada = this.ajustarDistribucionParImpar(apuesta, conjuntoFrios);
 
     // 9. Ordenar y retornar
     return apuestaAjustada.sort((a, b) => a - b);
@@ -124,22 +131,24 @@ export class MotorHistorico implements IGeneradorApuestas {
   /**
    * Obtiene números que llevan muchos sorteos sin aparecer (fríos)
    * Requisito: 1.3
+   * Asume que resultados[length-1] es el más reciente
    */
   obtenerNumerosFrios(resultados: ResultadoSorteo[], umbralSorteos: number): number[] {
-    const ultimaAparicion: UltimaAparicion = {};
+    const sorteosDesdUltimaAparicion: UltimaAparicion = {};
 
-    // Inicializar todos los números con el máximo de sorteos
+    // Inicializar todos los números como si nunca hubieran aparecido
     for (let i = 1; i <= 49; i++) {
-      ultimaAparicion[i] = resultados.length;
+      sorteosDesdUltimaAparicion[i] = resultados.length;
     }
 
-    // Recorrer resultados desde el más reciente
-    for (let i = 0; i < resultados.length; i++) {
+    // Recorrer desde el más reciente (último índice) hacia el más antiguo
+    // sorteosDesdeFin = 0 significa que apareció en el sorteo más reciente
+    for (let i = resultados.length - 1; i >= 0; i--) {
+      const sorteosDesdeFin = resultados.length - 1 - i;
       const resultado = resultados[i];
       for (const numero of resultado.combinacionGanadora) {
-        // Solo actualizar si aún no se ha encontrado
-        if (ultimaAparicion[numero] === resultados.length) {
-          ultimaAparicion[numero] = i;
+        if (sorteosDesdUltimaAparicion[numero] === resultados.length) {
+          sorteosDesdUltimaAparicion[numero] = sorteosDesdeFin;
         }
       }
     }
@@ -147,7 +156,7 @@ export class MotorHistorico implements IGeneradorApuestas {
     // Filtrar números que llevan más del umbral sin aparecer
     const numerosFrios: number[] = [];
     for (let numero = 1; numero <= 49; numero++) {
-      if (ultimaAparicion[numero] >= umbralSorteos) {
+      if (sorteosDesdUltimaAparicion[numero] >= umbralSorteos) {
         numerosFrios.push(numero);
       }
     }
@@ -176,18 +185,43 @@ export class MotorHistorico implements IGeneradorApuestas {
   }
 
   /**
-   * Completa la apuesta hasta 6 números con números aleatorios
+   * Completa la apuesta hasta 6 números evitando fríos adicionales
    */
-  private completarApuesta(calientes: number[], frios: number[]): number[] {
-    const apuesta = [...calientes, ...frios];
-    const numerosUsados = new Set(apuesta);
+  private completarApuesta(calientes: number[], frios: number[], conjuntoFrios: Set<number> = new Set(), noFrios: number[] = []): number[] {
+    const numerosUsados = new Set<number>();
+    const apuesta: number[] = [];
 
-    // Generar números restantes
-    while (apuesta.length < 6) {
-      const numero = Math.floor(Math.random() * 49) + 1;
-      if (!numerosUsados.has(numero)) {
-        apuesta.push(numero);
-        numerosUsados.add(numero);
+    for (const n of [...calientes, ...frios]) {
+      if (!numerosUsados.has(n)) {
+        apuesta.push(n);
+        numerosUsados.add(n);
+      }
+    }
+
+    // Completar con no-fríos disponibles (en orden aleatorio)
+    const disponibles = noFrios.filter(n => !numerosUsados.has(n));
+    for (let i = disponibles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [disponibles[i], disponibles[j]] = [disponibles[j], disponibles[i]];
+    }
+
+    for (const n of disponibles) {
+      if (apuesta.length >= 6) break;
+      apuesta.push(n);
+      numerosUsados.add(n);
+    }
+
+    // Último recurso: cualquier número no usado
+    for (let n = 1; n <= 49 && apuesta.length < 6; n++) {
+      if (!numerosUsados.has(n) && !conjuntoFrios.has(n)) {
+        apuesta.push(n);
+        numerosUsados.add(n);
+      }
+    }
+    for (let n = 1; n <= 49 && apuesta.length < 6; n++) {
+      if (!numerosUsados.has(n)) {
+        apuesta.push(n);
+        numerosUsados.add(n);
       }
     }
 
@@ -199,7 +233,7 @@ export class MotorHistorico implements IGeneradorApuestas {
    * Distribuciones válidas: 3:3, 4:2, 2:4
    * Requisito: 1.4
    */
-  ajustarDistribucionParImpar(apuesta: number[]): number[] {
+  ajustarDistribucionParImpar(apuesta: number[], numerosExcluidos: Set<number> = new Set()): number[] {
     const pares = apuesta.filter((n) => n % 2 === 0);
     const impares = apuesta.filter((n) => n % 2 !== 0);
 
@@ -215,14 +249,26 @@ export class MotorHistorico implements IGeneradorApuestas {
       return apuesta;
     }
 
-    // Necesita ajuste - reemplazar números para lograr distribución válida
-    return this.reemplazarParaDistribucion(apuesta);
+    // Solo ajustar si hay suficientes no-excluidos con la paridad necesaria
+    const paresDisponibles = Array.from({length: 49}, (_, i) => i + 2).filter(
+      n => n % 2 === 0 && !new Set(apuesta).has(n) && !numerosExcluidos.has(n)
+    );
+    const imparesDisponibles = Array.from({length: 49}, (_, i) => i + 1).filter(
+      n => n % 2 !== 0 && !new Set(apuesta).has(n) && !numerosExcluidos.has(n)
+    );
+
+    // Si no hay suficientes disponibles para ajustar, devolver sin cambios
+    if (paresDisponibles.length === 0 || imparesDisponibles.length === 0) {
+      return apuesta;
+    }
+
+    return this.reemplazarParaDistribucion(apuesta, numerosExcluidos);
   }
 
   /**
    * Reemplaza números para lograr una distribución par/impar válida
    */
-  private reemplazarParaDistribucion(apuesta: number[]): number[] {
+  private reemplazarParaDistribucion(apuesta: number[], numerosExcluidos: Set<number> = new Set()): number[] {
     const pares = apuesta.filter((n) => n % 2 === 0);
     const impares = apuesta.filter((n) => n % 2 !== 0);
     const numerosUsados = new Set(apuesta);
@@ -242,13 +288,19 @@ export class MotorHistorico implements IGeneradorApuestas {
 
     // Ajustar pares
     while (cantidadPares < objetivo.pares) {
-      // Necesitamos más pares, reemplazar un impar
       const indiceImpar = nuevaApuesta.findIndex((n) => n % 2 !== 0);
       if (indiceImpar !== -1) {
-        // Buscar un número par que no esté usado
-        let nuevoPar = this.generarNumeroAleatorio(true, numerosUsados);
+        const numeroAReemplazar = nuevaApuesta[indiceImpar];
+        numerosUsados.delete(numeroAReemplazar);
+        // Verificar si hay pares disponibles sin usar fríos
+        const hayParDisponible = Array.from({length: 49}, (_, i) => i + 1)
+          .some(n => n % 2 === 0 && !numerosUsados.has(n) && !numerosExcluidos.has(n));
+        if (!hayParDisponible) {
+          numerosUsados.add(numeroAReemplazar);
+          return apuesta; // No se puede ajustar sin usar fríos
+        }
+        const nuevoPar = this.generarNumeroAleatorio(true, numerosUsados, numerosExcluidos);
         nuevaApuesta[indiceImpar] = nuevoPar;
-        numerosUsados.delete(apuesta[indiceImpar]);
         numerosUsados.add(nuevoPar);
         cantidadPares++;
         cantidadImpares--;
@@ -256,13 +308,18 @@ export class MotorHistorico implements IGeneradorApuestas {
     }
 
     while (cantidadPares > objetivo.pares) {
-      // Necesitamos menos pares, reemplazar un par
       const indicePar = nuevaApuesta.findIndex((n) => n % 2 === 0);
       if (indicePar !== -1) {
-        // Buscar un número impar que no esté usado
-        let nuevoImpar = this.generarNumeroAleatorio(false, numerosUsados);
+        const numeroAReemplazar = nuevaApuesta[indicePar];
+        numerosUsados.delete(numeroAReemplazar);
+        const hayImparDisponible = Array.from({length: 49}, (_, i) => i + 1)
+          .some(n => n % 2 !== 0 && !numerosUsados.has(n) && !numerosExcluidos.has(n));
+        if (!hayImparDisponible) {
+          numerosUsados.add(numeroAReemplazar);
+          return apuesta;
+        }
+        const nuevoImpar = this.generarNumeroAleatorio(false, numerosUsados, numerosExcluidos);
         nuevaApuesta[indicePar] = nuevoImpar;
-        numerosUsados.delete(apuesta[indicePar]);
         numerosUsados.add(nuevoImpar);
         cantidadPares--;
         cantidadImpares++;
@@ -275,7 +332,7 @@ export class MotorHistorico implements IGeneradorApuestas {
   /**
    * Genera un número aleatorio par o impar que no esté en uso
    */
-  private generarNumeroAleatorio(par: boolean, numerosUsados: Set<number>): number {
+  private generarNumeroAleatorio(par: boolean, numerosUsados: Set<number>, numerosExcluidos: Set<number> = new Set()): number {
     let numero: number;
     let intentos = 0;
     const maxIntentos = 100;
@@ -285,7 +342,13 @@ export class MotorHistorico implements IGeneradorApuestas {
       intentos++;
 
       if (intentos >= maxIntentos) {
-        // Fallback: buscar secuencialmente
+        // Fallback: buscar secuencialmente ignorando exclusiones si es necesario
+        for (let i = 1; i <= 49; i++) {
+          if (!numerosUsados.has(i) && !numerosExcluidos.has(i) && (par ? i % 2 === 0 : i % 2 !== 0)) {
+            return i;
+          }
+        }
+        // Si no hay disponibles sin excluidos, ignorar exclusiones
         for (let i = 1; i <= 49; i++) {
           if (!numerosUsados.has(i) && (par ? i % 2 === 0 : i % 2 !== 0)) {
             return i;
@@ -293,7 +356,7 @@ export class MotorHistorico implements IGeneradorApuestas {
         }
         throw new Error('No se pudo generar número con paridad requerida');
       }
-    } while (numerosUsados.has(numero) || (par ? numero % 2 !== 0 : numero % 2 === 0));
+    } while (numerosUsados.has(numero) || numerosExcluidos.has(numero) || (par ? numero % 2 !== 0 : numero % 2 === 0));
 
     return numero;
   }

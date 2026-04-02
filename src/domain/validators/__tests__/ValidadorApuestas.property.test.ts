@@ -64,7 +64,7 @@ describe('ValidadorApuestas - Property-Based Tests', () => {
         fc.property(
           fc.tuple(
             fc.array(fc.integer({ min: 1, max: 49 }), { minLength: 5, maxLength: 5 }),
-            fc.float({ min: 1.1, max: 48.9 })
+            fc.float({ min: Math.fround(1.1), max: Math.fround(48.9) }).filter(n => !Number.isInteger(n))
           ),
           ([enteros, decimal]) => {
             const numeros = [...enteros, decimal];

@@ -198,7 +198,29 @@ Las contribuciones son bienvenidas. Por favor:
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📞 Soporte
+## � Build Fixes (Resueltos)
+
+Durante la configuración inicial del proyecto React Native 0.73, se encontraron y resolvieron los siguientes problemas:
+
+### Problemas Resueltos
+1. **Plugin Gradle incompatible**: El `android/build.gradle` usaba la sintaxis antigua `apply plugin: "com.facebook.react.rootproject"`. Se actualizó a la nueva sintaxis `plugins { id("com.facebook.react") }` para React Native 0.73.
+
+2. **Versión de Build Tools**: El `buildToolsVersion` estaba configurado en "34.0.0", pero el SDK instalado tenía "33.0.1". Se cambió a "33.0.1" para compatibilidad.
+
+3. **JDK incorrecto**: El `JAVA_HOME` apuntaba a JDK 11, pero React Native 0.73 requiere JDK 17. Se configuró `JAVA_HOME` al JDK 17 de Adoptium.
+
+4. **Keystore de debug faltante**: El archivo `android/app/debug.keystore` no existía. Se generó usando `keytool` con las credenciales estándar de debug.
+
+5. **Política de ejecución de PowerShell**: En Windows, la ejecución de scripts estaba deshabilitada. Se cambió la política a `RemoteSigned` para el usuario actual.
+
+### Comandos utilizados para las correcciones
+- `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+- `keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"`
+- `cd android; .\gradlew clean`
+
+Después de estos cambios, el build de Android funciona correctamente y la app se instala en el emulador.
+
+## �📞 Soporte
 
 Si encuentras algún problema o tienes preguntas:
 - Abre un issue en GitHub
@@ -219,3 +241,4 @@ Si encuentras algún problema o tienes preguntas:
 **Desarrollado con ❤️ para los amantes de la Bonoloto**
 "# amuleto" 
 "# amuleto" 
+"# amuletov2" 

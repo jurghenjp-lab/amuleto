@@ -105,28 +105,24 @@ export class MotorAmuleto implements IGeneradorApuestas {
    * Requisito: 3.4
    */
   generarHash(entrada: string): string {
-    // Implementación de hash simple pero determinista
-    // Basado en algoritmo DJB2
-    let hash = 5381;
+    // Usar dos hashes independientes para mayor dispersión
+    let h1 = 5381;
+    let h2 = 52711;
 
     for (let i = 0; i < entrada.length; i++) {
       const char = entrada.charCodeAt(i);
-      hash = (hash << 5) + hash + char; // hash * 33 + char
-      hash = hash & hash; // Convertir a entero de 32 bits
+      h1 = Math.imul(h1 ^ char, 0x9e3779b9) >>> 0;
+      h2 = Math.imul(h2 ^ char, 0x85ebca6b) >>> 0;
     }
 
-    // Convertir a hexadecimal y asegurar longitud mínima
-    const hashHex = Math.abs(hash).toString(16);
+    // Mezclar los dos hashes
+    h1 ^= h2;
+    h2 ^= h1;
 
-    // Extender el hash si es necesario para tener suficientes dígitos
-    let hashExtendido = hashHex;
-    while (hashExtendido.length < 12) {
-      // Generar más dígitos usando el hash como semilla
-      const nuevoHash = this.generarHashSecundario(hashExtendido);
-      hashExtendido += nuevoHash;
-    }
+    const hex1 = (h1 >>> 0).toString(16).padStart(8, '0');
+    const hex2 = (h2 >>> 0).toString(16).padStart(8, '0');
 
-    return hashExtendido;
+    return hex1 + hex2;
   }
 
   /**

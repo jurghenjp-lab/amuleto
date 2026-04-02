@@ -122,8 +122,8 @@ describe('CacheResultados', () => {
       // Obtener el caché directamente del storage para probarlo
       const cacheString = (global as any).__storage['bonoloto_resultados_cache'];
       const cacheData = JSON.parse(cacheString, (key: string, value: any) => {
-        if (value && typeof value === 'object' && value.__type === 'Date') {
-          return new Date(value.value);
+        if ((key === 'fechaCache' || key === 'validoHasta' || key === 'fecha') && typeof value === 'string') {
+          return new Date(value);
         }
         return value;
       });
@@ -188,7 +188,7 @@ describe('CacheResultados', () => {
 
       const cacheString = JSON.stringify(cacheExpirado, (key: string, value: any) => {
         if (value instanceof Date) {
-          return { __type: 'Date', value: value.toISOString() };
+          return value.toISOString();
         }
         return value;
       });

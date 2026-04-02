@@ -64,11 +64,7 @@ describe('CoordinadorMotores - Property-Based Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.integer({ min: 2, max: 8 }),
-          fc.array(fc.constantFrom('Motor 1', 'Motor 2', 'Motor 3'), {
-            minLength: 2,
-            maxLength: 8,
-          }),
-          async (numeroColumnas, motoresDisponibles) => {
+          async (numeroColumnas) => {
             const motores = [
               new MotorMock('Motor 1'),
               new MotorMock('Motor 2'),
@@ -77,8 +73,11 @@ describe('CoordinadorMotores - Property-Based Tests', () => {
 
             const coordinador = new CoordinadorMotores(motores);
 
-            // Ajustar configuración al número de columnas
-            const configuracion = motoresDisponibles.slice(0, numeroColumnas);
+            // Configuración con exactamente numeroColumnas elementos
+            const nombres = ['Motor 1', 'Motor 2', 'Motor 3'];
+            const configuracion = Array(numeroColumnas)
+              .fill(0)
+              .map((_, i) => nombres[i % nombres.length]);
 
             const apuestas = await coordinador.generarColumnas(numeroColumnas, configuracion);
 

@@ -87,22 +87,23 @@ export class CacheResultados {
   /**
    * Serializador personalizado para convertir fechas a strings en JSON
    */
-  private serializadorFechas(key: string, value: any): any {
+  private serializadorFechas = (_key: string, value: any): any => {
     if (value instanceof Date) {
-      return { __type: 'Date', value: value.toISOString() };
+      return value.toISOString();
     }
     return value;
-  }
+  };
 
   /**
    * Deserializador personalizado para convertir strings a fechas desde JSON
    */
-  private deserializadorFechas(key: string, value: any): any {
-    if (value && typeof value === 'object' && value.__type === 'Date') {
-      return new Date(value.value);
+  private deserializadorFechas = (key: string, value: any): any => {
+    // Campos conocidos que son fechas
+    if ((key === 'fechaCache' || key === 'validoHasta' || key === 'fecha') && typeof value === 'string') {
+      return new Date(value);
     }
     return value;
-  }
+  };
 
   /**
    * Abstracción de almacenamiento para facilitar testing

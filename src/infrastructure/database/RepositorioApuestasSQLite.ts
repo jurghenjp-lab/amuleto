@@ -57,9 +57,11 @@ export class RepositorioApuestasSQLite implements IRepositorioApuestas {
       }
 
       // Ordenar por fecha descendente (más recientes primero)
-      return apuestas.sort(
-        (a, b) => b.fechaGeneracion.getTime() - a.fechaGeneracion.getTime()
-      );
+      return apuestas.sort((a, b) => {
+        const fechaA = a.fechaGeneracion instanceof Date ? a.fechaGeneracion : new Date(a.fechaGeneracion);
+        const fechaB = b.fechaGeneracion instanceof Date ? b.fechaGeneracion : new Date(b.fechaGeneracion);
+        return fechaB.getTime() - fechaA.getTime();
+      });
     } catch (error) {
       console.error('Error al obtener apuestas:', error);
       return [];
@@ -133,22 +135,22 @@ export class RepositorioApuestasSQLite implements IRepositorioApuestas {
   /**
    * Serializador personalizado para convertir fechas a strings en JSON
    */
-  private serializadorFechas(key: string, value: any): any {
+  private serializadorFechas = (_key: string, value: any): any => {
     if (value instanceof Date) {
-      return { __type: 'Date', value: value.toISOString() };
+      return value.toISOString();
     }
     return value;
-  }
+  };
 
   /**
    * Deserializador personalizado para convertir strings a fechas desde JSON
    */
-  private deserializadorFechas(key: string, value: any): any {
-    if (value && typeof value === 'object' && value.__type === 'Date') {
-      return new Date(value.value);
+  private deserializadorFechas = (key: string, value: any): any => {
+    if (key === 'fechaGeneracion' && typeof value === 'string') {
+      return new Date(value);
     }
     return value;
-  }
+  };
 
   /**
    * Abstracción de almacenamiento para facilitar testing
